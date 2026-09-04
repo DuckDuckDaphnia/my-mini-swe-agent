@@ -4,7 +4,7 @@ class DockerEnv:
     def __init__(self,image,cwd="/",timeout=30):
         self.image, self.cwd, self.timeout = image, cwd, timeout
         "获得id"
-        self.container_id = self._start_container
+        self.container_id = self._start_container()
 
     def _start_container(self):
         name = f"swedev-{uuid.uuid4().hex[:8]}"
@@ -15,7 +15,7 @@ class DockerEnv:
                 text=True,
                 check=True,
         )
-        return r.stdout.strip
+        return r.stdout.strip()
 
     def execute(self, command):
         r = subprocess.run(
@@ -26,5 +26,5 @@ class DockerEnv:
         return {"output":r.stdout, "returncode":r.returncode}
 
     def cleanup(self):
-        subprocess.run(["docker","rm","-f",self.containeer_id],
+        subprocess.run(["docker","rm","-f",self.container_id],
                         capture_output=True)
