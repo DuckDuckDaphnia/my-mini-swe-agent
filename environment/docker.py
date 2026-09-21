@@ -17,7 +17,8 @@ class DockerEnv:
         )
         return r.stdout.strip()
 
-    def execute(self, command):
+    def execute(self, action:dict):
+        command = action.get("command","")
         r = subprocess.run(
             ["docker", "exec", "-w", self.cwd,self.container_id,
                 "bash","-lc",command],

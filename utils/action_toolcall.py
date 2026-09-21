@@ -1,0 +1,17 @@
+BASH_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "bash",
+        "description": "Execute a bash command",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string",
+                    "description": "The bash command to execute",
+                }
+            },
+            "required": ["command"],
+        },
+    },
+}
