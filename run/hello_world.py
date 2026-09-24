@@ -19,7 +19,7 @@ def main(
     logging.basicConfig(level=logging.DEBUG)
     agent = DefaultAgent(
         LitellmModel(model_name = model_name),
-        DockerEnv(image="ubuntu",
+        DockerEnv(image="python:3.11-slim",
             cwd="/home/dev/my-swe-agent/environment/envTs")
     )
     agent.run(task)

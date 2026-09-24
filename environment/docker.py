@@ -1,4 +1,5 @@
 import subprocess, uuid
+from utils.exceptions import Submitted
 
 class DockerEnv:
     def __init__(self,image,cwd="/",timeout=30):
@@ -24,7 +25,23 @@ class DockerEnv:
                 "bash","-lc",command],
                 capture_output=True, text=True,timeout=self.timeout,
         )
-        return {"output":r.stdout, "returncode":r.returncode}
+        output = {"output":r.stdout, "returncode":r.returncode}
+        self._check_finished(output=output)
+        return output
+
+    def _check_finished(self, output:dict):
+        lines = output.get("output","").lstrip().splitlines(keepends=True)
+        #这里没有完成line第一行出任务完成
+        if lines and output["returncode"]==0:
+            submission = "".join(lines[1:])
+            raise Submitted(
+                #把信息传过去
+                {
+                    "role":"exit",
+                    "content":submission,
+                    "extra":{"exit_status":"Submitted","submission":submission}
+                }
+            )
 
     def cleanup(self):
         subprocess.run(["docker","rm","-f",self.container_id],

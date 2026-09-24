@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from model.litellm_base_model import LitellmModel,LitellmModelConfig
 from environment.docker import DockerEnv
+from utils.exceptions import InterruptAgentFlow
 
 class AgentConfig(BaseModel):
     #填入config
@@ -14,6 +15,8 @@ class DefaultAgent:
         self.env = env
         self.messages:list[dict] = []
         #未实现的功能
+
+        #没有做add message
 
     def run(self, task:str=""):
         "run"
@@ -30,8 +33,11 @@ class DefaultAgent:
         ]
         #等待完善退出任务和step
         while True:
-            self.step()
-            break
+            try:
+                self.step()
+            except InterruptAgentFlow as e:
+                self.messages.append(e.messages)
+            # break
         return self.messages[-1].get("extra",{})
 
     def step(self):
@@ -40,9 +46,10 @@ class DefaultAgent:
     def query(self):
         #待完善花费退出和时间超时
         message = self.model.query(self.messages)
-        self.messages.extend(message)
+        self.messages.append(message)
         return message
 
-    def execute_action(self,messages:dict):
-        outputs = [self.env.execute(action) for action in messages.get("extra",{}).get("actions",[])]
+    def execute_action(self,message:dict):
+        outputs = [self.env.execute(action) for action in message.get("extra",{}).get("actions",[])]
+        self.messages.extend(self.model.format_observation_messages(message=message,outputs=outputs))
         return outputs

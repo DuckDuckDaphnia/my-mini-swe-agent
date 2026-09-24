@@ -3,7 +3,8 @@ from pydantic import BaseModel
 from collections.abc import Callable
 import os
 from dotenv import load_dotenv
-from utils.action_toolcall import BASH_TOOL
+from utils.action_toolcall import (BASH_TOOL,
+                                   format_toolcall_observation_message)
 import json
 
 load_dotenv()
@@ -27,11 +28,11 @@ class LitellmModel:
         response = self._query(messages)
         actions = self._parse_actions(response=response)
 
-        messages = response.choices[0].message.model_dump()
-        messages["extra"] = {
+        message = response.choices[0].message.model_dump()
+        message["extra"] = {
             "actions": actions
         }
-        return messages
+        return message
 
     def _parse_actions(self, response):
         tool_calls =response.choices[0].message.tool_calls
@@ -41,9 +42,6 @@ class LitellmModel:
             actions.append({"command":args["command"],"tool_call_id":tool_call.id})
         return actions
 
-testmodel = LitellmModel(LitellmModelConfig)
-message = testmodel.query([{
-    "role":"user",
-    "content":"你可以试着echo hello吗"
-}])
-print(message)
+    def format_observation_messages(self, message:dict,outputs:list[dict])->list[dict]:
+        actions = message.get("extra", {}).get("actions",[])
+        return format_toolcall_observation_message(actions = actions, outputs = outputs)
