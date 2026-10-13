@@ -26,11 +26,14 @@ class LitellmModel:
         )
     def query(self, messages:list[dict[str,str]]):
         response = self._query(messages)
+        cost_output = self._calculate_cost(response)
         actions = self._parse_actions(response=response)
 
         message = response.choices[0].message.model_dump()
         message["extra"] = {
-            "actions": actions
+            "actions": actions,
+            "response":response.model_dump(),
+            **cost_output
         }
         return message
 
@@ -41,6 +44,10 @@ class LitellmModel:
             args = json.loads(tool_call.function.arguments)
             actions.append({"command":args["command"],"tool_call_id":tool_call.id})
         return actions
+
+    def _calculate_cost(self, response) -> dict[str, float]:
+        cost = litellm.cost_calculator.completion_cost(response,model = self.config.model_name)
+        return {"cost":cost}
 
     def format_observation_messages(self, message:dict,outputs:list[dict])->list[dict]:
         actions = message.get("extra", {}).get("actions",[])

@@ -1,20 +1,23 @@
 from pydantic import BaseModel
 from model.litellm_base_model import LitellmModel,LitellmModelConfig
 from environment.docker import DockerEnv
-from utils.exceptions import InterruptAgentFlow
+from utils.exceptions import InterruptAgentFlow, LimitsExceeded
 
 class AgentConfig(BaseModel):
     #填入config
     step_limit: int = 0
+    cost_limit: float = 3.0
 
 
 class DefaultAgent:
-    def __init__(self, model:LitellmModel,env:DockerEnv,config_class: type = AgentConfig):
-        self.config = config_class
+    def __init__(self, model:LitellmModel,env:DockerEnv,config_class: type = AgentConfig, **kwargs):
+        self.config = config_class(**kwargs)
         self.model = model
         self.env = env
         self.messages:list[dict] = []
+        self.cost = 0.0
         #未实现的功能
+
 
         #没有做add message
 
@@ -24,7 +27,9 @@ class DefaultAgent:
         self.messages = [
             {
                 "role":"system",
-                "content":"You are a helpful assistant.Output one bash command"
+                "content":"You are a helpful assistant."
+                "Output one bash command."
+                "when finished, make the FIRST line of your command's output be COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT, followed by the answer"
             },
             {
                 "role":"user",
@@ -37,7 +42,8 @@ class DefaultAgent:
                 self.step()
             except InterruptAgentFlow as e:
                 self.messages.append(e.messages)
-            # break
+            if self.messages[-1].get("role") == "exit":
+                break
         return self.messages[-1].get("extra",{})
 
     def step(self):
@@ -45,7 +51,16 @@ class DefaultAgent:
 
     def query(self):
         #待完善花费退出和时间超时
+        if 0<self.config.cost_limit <= self.cost:
+            raise LimitsExceeded(
+                {
+                    "role":"exit",
+                    "content":"LimitsExceeded",
+                    "extra":{"exit_status":"LimitsExceeded","submission":""},
+                }
+            )
         message = self.model.query(self.messages)
+        self.cost += message.get("extra", {}).get("cost", 0.0)
         self.messages.append(message)
         return message
 

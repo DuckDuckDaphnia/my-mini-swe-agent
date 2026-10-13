@@ -10,7 +10,7 @@ class DockerEnv:
     def _start_container(self):
         name = f"swedev-{uuid.uuid4().hex[:8]}"
         r = subprocess.run(
-            ["docker", "run", "-d", "--name", name, "-w",self.cwd,
+            ["docker","run","-d", "--rm", "--name", name, "-w",self.cwd,
                 self.image,"sleep","2h"],
                 capture_output=True,
                 text=True,
@@ -31,8 +31,7 @@ class DockerEnv:
 
     def _check_finished(self, output:dict):
         lines = output.get("output","").lstrip().splitlines(keepends=True)
-        #这里没有完成line第一行出任务完成
-        if lines and output["returncode"]==0:
+        if lines and lines[0].strip()== "COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT" and output["returncode"]==0:
             submission = "".join(lines[1:])
             raise Submitted(
                 #把信息传过去
@@ -44,5 +43,9 @@ class DockerEnv:
             )
 
     def cleanup(self):
-        subprocess.run(["docker","rm","-f",self.container_id],
-                        capture_output=True)
+        if getattr(self, "container_id",None) is not None:
+            subprocess.run(["docker", "rm", "-f", self.container_id], capture_output=True)
+
+    def __del__(self):
+        """Cleanup container when object is destroyed."""
+        self.cleanup()
