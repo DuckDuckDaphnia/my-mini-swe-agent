@@ -1,3 +1,6 @@
+from utils.exceptions import FormatError
+import json
+
 BASH_TOOL = {
     "type": "function",
     "function": {
@@ -42,3 +45,36 @@ def format_toolcall_observation_message(
             msg["role"] = "user"
         result.append(msg)
     return result
+
+def parse_actions(tool_calls:list):
+    if not tool_calls:
+        #处理空的tool_calls
+        raise FormatError(
+            {
+                "role":"user",
+                "content":"No tool calls found in the response. Every response MUST include at least one tool call.",
+                "extra":{"interrupt_type": "FormatError"},
+            }
+        )
+    #处理tool_call
+    actions = []
+    for tool_call in tool_calls:
+        error_msg = ""
+        args = {}
+        try:
+            args = json.loads(tool_call.function.arguments)
+        except Exception as e:
+            #json解析失败
+            error_msg = f"Error parsing tool call arguments:{e}"
+        if tool_call.function.name!="bash":
+            #未知的命令
+            error_msg += f"Unknown tool '{tool_call.function.name}."
+        if not isinstance(args, dict) or "command" not in args:
+            #toolcall里没有command,或者args不是字典
+            error_msg +="Missing 'command' argument in bash tool call."
+        if error_msg:
+            #如果出错rasie错误
+            raise FormatError({
+                "role":"user",
+                
+            })
