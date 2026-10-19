@@ -1,5 +1,7 @@
 from utils.exceptions import FormatError
 import json
+from jinja2 import StrictUndefined, Template
+#意识到了用jinja2是好的
 
 BASH_TOOL = {
     "type": "function",
@@ -46,13 +48,19 @@ def format_toolcall_observation_message(
         result.append(msg)
     return result
 
-def parse_actions(tool_calls:list):
+def parse_actions(tool_calls:list,*,format_error_template:str,template_kwargs:dict|None = None):
+    template_kwargs = template_kwargs or {}
     if not tool_calls:
         #处理空的tool_calls
         raise FormatError(
             {
                 "role":"user",
-                "content":"No tool calls found in the response. Every response MUST include at least one tool call.",
+                "content":Template(format_error_template,undefined=StrictUndefined).render(
+                    error = "No tool calls found in the response. Every response MUST include at least one tool call.",
+                    actions = [],
+                    has_tool_calls = False,
+                    **template_kwargs,
+                ),
                 "extra":{"interrupt_type": "FormatError"},
             }
         )
@@ -68,7 +76,7 @@ def parse_actions(tool_calls:list):
             error_msg = f"Error parsing tool call arguments:{e}"
         if tool_call.function.name!="bash":
             #未知的命令
-            error_msg += f"Unknown tool '{tool_call.function.name}."
+            error_msg += f"Unknown tool '{tool_call.function.name}'."
         if not isinstance(args, dict) or "command" not in args:
             #toolcall里没有command,或者args不是字典
             error_msg +="Missing 'command' argument in bash tool call."
@@ -76,5 +84,13 @@ def parse_actions(tool_calls:list):
             #如果出错rasie错误
             raise FormatError({
                 "role":"user",
-                
+                "content":Template(format_error_template,undefined=StrictUndefined).render(
+                    actions = [],
+                    error = error_msg.strip(),
+                    has_tool_calls=True,
+                    **template_kwargs,
+                ),
+                "extra":{"interrupt_type":"FormatError"},
             })
+        actions.append({"command":args["command"], "tool_call_id":tool_call.id})
+    return actions

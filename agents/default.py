@@ -27,9 +27,9 @@ class DefaultAgent:
         self.messages = [
             {
                 "role":"system",
-                "content":"You are a helpful assistant."
-                "Output one bash command."
-                "when finished, make the FIRST line of your command's output be COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT, followed by the answer"
+                "content":"You are a helpful assistant. "
+                "Output one bash command. "
+                "when finished, make the FIRST line of your command's output be COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT, followed by the answer "
             },
             {
                 "role":"user",
